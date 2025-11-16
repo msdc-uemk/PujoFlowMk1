@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CrowdSafe AI - Footfall Heatmap</title>
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- Leaflet Heatmap Plugin -->
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+  <!-- Flatpickr CSS + JS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <!-- Custom Styles -->
+  <style>
+    /* Background with festive overlay */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Poppins", sans-serif;
+      color: #fff;
+      text-align: center;
+      background: url("https://www.shutterstock.com/shutterstock/videos/3879865487/thumb/1.jpg?ip=x480")
+        no-repeat center center fixed;
+      background-size: cover;
+      position: relative;
+      min-height: 100vh;
+    }
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        rgba(255, 69, 0, 0.7),
+        rgba(255, 140, 0, 0.6),
+        rgba(255, 215, 0, 0.5)
+      );
+      z-index: -1;
+    }
+
+    h2 {
+      margin-bottom: 0px;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+      font-size: 2.2rem;
+    }
+    p {
+      margin-top: 5px;
+      font-size: 1rem;
+      color: #ffeaa7;
+    }
+
+    /* Controls */
+    .controls, .ai-controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin: 15px auto;
+      padding: 15px 20px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(12px);
+      border-radius: 15px;
+      width: fit-content;
+      box-shadow: 0px 6px 12px rgba(0,0,0,0.3);
+    }
+    label {
+      font-weight: bold;
+      margin-right: 5px;
+    }
+    select, input, button {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    select, input {
+      background: rgba(255, 255, 255, 0.85);
+      color: #222;
+    }
+    button {
+      background: linear-gradient(45deg, #ff4500, #ff8c00, #ffd700);
+      color: white;
+      font-weight: bold;
+      box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+    }
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0px 6px 14px rgba(0,0,0,0.4);
+    }
+
+    /* Map */
+    #map {
+      height: 500px;
+      width: 90%;
+      margin: 20px auto;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0px 8px 18px rgba(0,0,0,0.4);
+    }
+
+    /* AI Suggestion */
+    #aiSuggestion {
+      margin: 20px auto;
+      padding: 15px;
+      max-width: 700px;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      border-radius: 12px;
+      font-size: 1.1rem;
+      color: #fff;
+      box-shadow: 0px 6px 12px rgba(0,0,0,0.25);
+    }
+
+    /* Legend */
+    #legend {
+      margin: 10px;
+      font-size: 0.95rem;
+      color: #fff;
+      background: rgba(0,0,0,0.4);
+      display: inline-block;
+      padding: 8px 15px;
+      border-radius: 10px;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 20px;
+      padding: 10px;
+      background: rgba(0,0,0,0.4);
+      font-size: 0.9rem;
+      border-radius: 12px 12px 0 0;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <!-- Branding -->
+  <h2>🌸 PujoFlow 🌸</h2>
+  <p><i>Smarter, Safer, Sustainable Tourism</i></p>
+
+  <!-- Date + Time Selector -->
+  <div class="controls">
+    <label for="dateSelect">📅 Date:</label>
+    <input type="text" id="dateSelect" placeholder="Choose a date">
+
+    <label for="timeSelect">⏰ Time:</label>
+    <select id="timeSelect"></select>
+  </div>
+
+  <!-- AI Best Time Prediction -->
+  <div class="ai-controls">
+    <label for="daySelect">📅 Day:</label>
+    <select id="daySelect"></select>
+
+    <label for="pandalSelect">🏮 Pandal:</label>
+    <select id="pandalSelect"></select>
+
+    <button id="predictBtn">✨ Suggest Best Time</button>
+  </div>
+  <div id="aiSuggestion"> Suggestions will appear here...</div>
+
+  <!-- Map container -->
+  <div id="map"></div>
+
+  <!-- Legend -->
+  <div id="legend">
+    <b>Legend:</b><br>
+    <span style="color:green;">● Green = &lt;1000</span> | 
+    <span style="color:yellow;">● Yellow = 1000–3000</span> | 
+    <span style="color:red;">● Red = 3000–5000</span> | 
+    <span style="color:purple;">● Purple = 5000+</span>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    © 2025 CrowdSafe AI | Built at Hackathon for SDG 9 & 11
+  </footer>
+
+  <!-- JS -->
+  <script>
+    // ✅ Initialize Flatpickr (Durga Puja date range example)
+    flatpickr("#dateSelect", {
+      dateFormat: "Y-m-d",
+      defaultDate: "2025-10-19",
+      minDate: "2025-10-19",
+      maxDate: "2025-10-29",
+      allowInput: false
+    });
+
+    // ✅ Populate time dropdown (00:00 → 23:00)
+    const select = document.getElementById("timeSelect");
+    for (let hour = 0; hour < 24; hour++) {
+      let h = hour.toString().padStart(2, "0");
+      let option = document.createElement("option");
+      option.value = `${h}:00`;
+      option.textContent = `${h}:00`;
+      select.appendChild(option);
+    }
+    select.value = "19:00"; // default evening
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>
